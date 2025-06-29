@@ -74,7 +74,7 @@ async function sendMessage() {
   const encoded = new TextEncoder().encode(payload);
   const ciphertext = await window.crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, aesKey, encoded);
   socket.emit("encrypted_message", { msg: base64Encode(iv) + ":" + base64Encode(ciphertext), room });
-  appendMessage(`${text}\n• ${formatTimestamp(timestamp)}`, true);
+  appendMessage(`${text}\n• ${formatTimestamp(timestamp)}`, true, username);
 }
 
 function appendMessage(msg, isSelf = false, sender = "") {
@@ -129,19 +129,26 @@ function base64ToArrayBuffer(b64) {
   for (let i = 0; i < binary.length; i++) buffer[i] = binary.charCodeAt(i);
   return buffer.buffer;
 }
+
 function base64Encode(buffer) {
   return btoa(String.fromCharCode(...new Uint8Array(buffer)));
 }
+
 function formatTimestamp(isoString) {
   const date = new Date(isoString);
   return `${date.getHours() % 12 || 12}:${(date.getMinutes() + "").padStart(2, "0")} ${date.getHours() >= 12 ? "PM" : "AM"}`;
 }
+
 function stringToColor(str) {
   let hash = 0;
-  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  const hue = hash % 360;
-  return `hsl(${hue}, 70%, 50%)`;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue}, 70%, 50%)`; // Bright and readable
 }
+
 
 const themeToggle = document.getElementById("themeToggle");
 const appBody = document.body;
