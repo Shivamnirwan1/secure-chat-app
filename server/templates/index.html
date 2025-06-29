@@ -18,58 +18,33 @@
     }
   </style>
 </head>
-
 <body class="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white h-screen font-sans">
 
   <!-- Login Screen -->
-  <div id="loginScreen" class="flex flex-col items-center justify-center h-screen p-4">
-    <h1 class="text-2xl font-semibold mb-4">Enter your name</h1>
-    <input id="usernameInput" type="text" class="rounded-lg px-4 py-2 text-black w-64 mb-4 focus:ring-2 ring-blue-400" placeholder="Your name" />
-    <button onclick="startChat()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-white shadow">
-      Join Chat
-    </button>
+  <div id="loginScreen" class="flex flex-col items-center justify-center h-screen p-4 gap-3">
+    <h1 class="text-2xl font-semibold">Join a Secure Room</h1>
+    <input id="usernameInput" type="text" placeholder="Your name" class="rounded-lg px-4 py-2 text-black w-64 focus:ring-2 ring-blue-400" />
+    <input id="roomInput" type="text" placeholder="Room name" class="rounded-lg px-4 py-2 text-black w-64 focus:ring-2 ring-blue-400" />
+    <input id="roomPassword" type="password" placeholder="Room password" class="rounded-lg px-4 py-2 text-black w-64 focus:ring-2 ring-blue-400" />
+    <button onclick="startChat()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-white shadow">Join Chat</button>
+    <p id="loginError" class="text-red-500 hidden">❌ Incorrect password for room.</p>
   </div>
 
   <!-- Chat UI -->
   <div id="chatScreen" class="hidden h-screen flex">
-    
-    <!-- Sidebar: Online Users -->
     <div class="w-60 bg-gray-800 p-4 text-sm border-r border-gray-700">
       <h2 class="font-bold mb-3 text-white text-md">👥 Online Users</h2>
       <ul id="userList" class="space-y-1 text-gray-300 text-sm"></ul>
     </div>
 
-    <!-- Main Chat Panel -->
     <div class="flex-1 flex flex-col">
-      <!-- Header -->
-      <div class="p-4 bg-gray-800 text-center text-xl font-bold tracking-wide border-b border-gray-700">
-        🔐 Secure Chat
-      </div>
-
-      <!-- Typing Indicator -->
-      <div id="typingIndicator" class="px-4 py-1 text-sm text-gray-400 hidden">
-        Someone is typing...
-      </div>
-
-      <!-- Chat Area -->
+      <div class="p-4 bg-gray-800 text-center text-xl font-bold tracking-wide border-b border-gray-700">🔐 Secure Chat</div>
+      <div id="typingIndicator" class="px-4 py-1 text-sm text-gray-400 hidden">Someone is typing...</div>
       <div id="chat" class="flex-1 p-4 overflow-y-auto space-y-2 text-sm bg-gray-950"></div>
-
-      <!-- Message Input -->
       <div class="p-4 bg-gray-800 flex gap-2 border-t border-gray-700">
-        <input
-          id="msg"
-          type="text"
-          placeholder="Type your message..."
-          class="flex-1 rounded-lg px-4 py-2 text-black focus:outline-none focus:ring-2 ring-blue-400 shadow"
-          oninput="onInput()"
-          onkeydown="if(event.key==='Enter') sendMessage()"
-        />
-        <button
-          onclick="sendMessage()"
-          class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow transition"
-        >
-          Send
-        </button>
+        <input id="msg" type="text" placeholder="Type your message..." class="flex-1 rounded-lg px-4 py-2 text-black focus:ring-2 ring-blue-400 shadow"
+               oninput="onInput()" onkeydown="if(event.key==='Enter') sendMessage()" />
+        <button onclick="sendMessage()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow">Send</button>
       </div>
     </div>
   </div>

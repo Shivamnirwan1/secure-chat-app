@@ -1,58 +1,70 @@
-# server/server.py
 import os
-from flask import Flask, request, render_template
-from flask_socketio import SocketIO, emit
-from encryption import generate_rsa_keypair, load_rsa_cipher
-from Crypto.Random import get_random_bytes
+from flask import Flask, render_template, request
+from flask_socketio import SocketIO, emit, join_room
+from encryption import load_rsa_cipher
 from base64 import b64encode, b64decode
+from Crypto.Random import get_random_bytes
 
-app = Flask(__name__, static_url_path='/static', static_folder='../static', template_folder='./templates')
+app = Flask(__name__, static_url_path="/static", static_folder="../static", template_folder="./templates")
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# AES key and RSA ciphers per client
 aes_key = get_random_bytes(16)
-connected_users = {}  # sid: username
-client_rsa_ciphers = {}
+room_passwords = {}
+room_users = {}        # room: {sid: username}
+client_rsa_ciphers = {}  # sid: RSA cipher
 
-
-@app.route('/')
-def home():
+@app.route("/")
+def index():
     return render_template("index.html")
 
-@socketio.on('public_key')
-def handle_public_key(data):
+@socketio.on("join_room")
+def join(data):
     sid = request.sid
-    rsa_cipher = load_rsa_cipher(b64decode(data))
-    client_rsa_ciphers[sid] = rsa_cipher
-    encrypted_aes = rsa_cipher.encrypt(aes_key)
-    emit('aes_key', b64encode(encrypted_aes).decode())
+    room = data["room"]
+    password = data["password"]
+    username = data["username"]
 
-@socketio.on('register_username')
-def handle_register_username(name):
+    if room in room_passwords:
+        if room_passwords[room] != password:
+            emit("room_join_error")
+            return
+    else:
+        room_passwords[room] = password
+
+    join_room(room)
+    if room not in room_users:
+        room_users[room] = {}
+    room_users[room][sid] = username
+    emit("room_join_success")
+    emit("update_users", list(room_users[room].values()), room=room)
+
+@socketio.on("public_key")
+def send_aes(data):
     sid = request.sid
-    connected_users[sid] = name
-    emit('update_users', list(connected_users.values()), broadcast=True)
+    room = data["room"]
+    pub_key = load_rsa_cipher(b64decode(data["pubKeyB64"]))
+    client_rsa_ciphers[sid] = pub_key
+    encrypted = pub_key.encrypt(aes_key)
+    emit("aes_key", b64encode(encrypted).decode())
 
+@socketio.on("encrypted_message")
+def handle_message(data):
+    emit("receive_message", data["msg"], room=data["room"], include_self=False)
 
-@socketio.on('encrypted_message')
-def handle_encrypted_message(data):
-    emit('receive_message', data, broadcast=True, include_self=False)
+@socketio.on("typing")
+def handle_typing(data):
+    emit("show_typing", data["username"], room=data["room"], include_self=False)
 
-@socketio.on('typing')
-def handle_typing(name):
-    emit('show_typing', name, broadcast=True, include_self=False)
-
-@socketio.on('disconnect')
-def handle_disconnect():
+@socketio.on("disconnect")
+def disconnect_user():
     sid = request.sid
-    if sid in client_rsa_ciphers:
-        del client_rsa_ciphers[sid]
-    if sid in connected_users:
-        del connected_users[sid]
-        emit('update_users', list(connected_users.values()), broadcast=True)
-    print(f"[-] Client {sid} disconnected.")
+    for room, users in room_users.items():
+        if sid in users:
+            del users[sid]
+            emit("update_users", list(users.values()), room=room)
+            break
+    client_rsa_ciphers.pop(sid, None)
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, host="0.0.0.0", port=port)
