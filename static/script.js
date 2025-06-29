@@ -142,3 +142,38 @@ function stringToColor(str) {
   const hue = hash % 360;
   return `hsl(${hue}, 70%, 50%)`;
 }
+
+// 🌙 Dark/Light Theme Toggle (Working)
+const themeToggle = document.getElementById("themeToggle");
+const appBody = document.body;
+const chatArea = document.getElementById("chat");
+const chatScreen = document.getElementById("chatScreen");
+
+themeToggle?.addEventListener("click", () => {
+  const isDark = appBody.classList.contains("bg-gray-900");
+
+  if (isDark) {
+    appBody.classList.remove("bg-gray-900", "text-white");
+    appBody.classList.add("bg-white", "text-black");
+
+    chatArea.classList.remove("bg-gray-950");
+    chatArea.classList.add("bg-gray-100");
+
+    chatScreen.querySelectorAll(".bg-gray-800").forEach(el => {
+      el.classList.remove("bg-gray-800");
+      el.classList.add("bg-gray-200");
+    });
+  } else {
+    appBody.classList.add("bg-gray-900", "text-white");
+    appBody.classList.remove("bg-white", "text-black");
+
+    chatArea.classList.add("bg-gray-950");
+    chatArea.classList.remove("bg-gray-100");
+
+    chatScreen.querySelectorAll(".bg-gray-200").forEach(el => {
+      el.classList.remove("bg-gray-200");
+      el.classList.add("bg-gray-800");
+    });
+  }
+});
+
