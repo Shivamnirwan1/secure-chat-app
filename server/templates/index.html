@@ -1,0 +1,82 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Secure Chat</title>
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <script defer src="/static/script.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white h-screen">
+
+  <!-- Username Prompt -->
+  <div id="loginScreen" class="flex flex-col items-center justify-center h-screen p-4">
+    <h1 class="text-2xl mb-4">Enter your name</h1>
+    <input id="usernameInput" type="text" class="rounded p-2 text-black w-64 mb-4" placeholder="Your name" />
+    <button onclick="startChat()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-white">
+      Join Chat
+    </button>
+  </div>
+
+  <div class="flex h-full">
+  <!-- Sidebar with user list -->
+  <div class="w-48 bg-gray-800 p-4 text-sm">
+    <h2 class="font-bold mb-2">Online Users</h2>
+    <ul id="userList" class="space-y-1 text-gray-300"></ul>
+  </div>
+
+  <!-- Main chat area -->
+  <div class="flex-1 flex flex-col">
+    <div class="p-4 bg-gray-800 text-center text-lg font-bold">
+      🔐 Secure Chat
+    </div>
+    <div id="typingIndicator" class="px-4 py-1 text-sm text-gray-400 hidden">
+      Someone is typing...
+    </div>
+    <div id="chat" class="flex-1 p-4 overflow-y-auto space-y-2 text-sm bg-gray-950"></div>
+    <div class="p-4 bg-gray-800 flex gap-2">
+      <input id="msg" type="text" placeholder="Type your message..."
+             class="flex-1 rounded-lg px-4 py-2 text-black focus:outline-none"
+             oninput="onInput()" onkeydown="if(event.key==='Enter') sendMessage()" />
+      <button onclick="sendMessage()"
+              class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+        Send
+      </button>
+    </div>
+  </div>
+</div>
+
+
+  <!-- Chat UI -->
+  <div id="chatScreen" class="hidden flex flex-col h-screen">
+    <div class="p-4 bg-gray-800 text-center text-lg font-bold">
+      🔐 Secure Chat
+    </div>
+
+    <div id="typingIndicator" class="px-4 py-1 text-sm text-gray-400 hidden">
+      Someone is typing...
+    </div>
+
+    <div id="chat" class="flex-1 p-4 overflow-y-auto space-y-2 text-sm bg-gray-950"></div>
+
+    <div class="p-4 bg-gray-800 flex gap-2">
+      <input
+        id="msg"
+        type="text"
+        placeholder="Type your message..."
+        class="flex-1 rounded-lg px-4 py-2 text-black focus:outline-none"
+        oninput="onInput()"
+        onkeydown="if(event.key==='Enter') sendMessage()"
+      />
+      <button
+        onclick="sendMessage()"
+        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+      >
+        Send
+      </button>
+    </div>
+  </div>
+</body>
+</html>
