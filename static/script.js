@@ -32,16 +32,17 @@ function appendMessage(msg, isSelf = false, sender = "") {
   wrapper.className = `flex items-start gap-2 ${isSelf ? "justify-end" : "justify-start"} animate-fadeIn`;
 
   if (!isSelf) {
-    // Create initials badge
+    // Create initials avatar with hashed background color
     const avatar = document.createElement("div");
-    avatar.className = "bg-blue-600 text-white font-bold rounded-full h-8 w-8 flex items-center justify-center shadow";
+    avatar.className = "text-white font-bold rounded-full h-8 w-8 flex items-center justify-center shadow shrink-0";
+    avatar.style.backgroundColor = stringToColor(sender);
     avatar.textContent = sender[0]?.toUpperCase() || "?";
     wrapper.appendChild(avatar);
   } else {
     wrapper.classList.add("ml-auto");
   }
 
-  // Create message bubble
+  // Message bubble
   const bubble = document.createElement("div");
   bubble.className = `
     max-w-[70%] px-4 py-2 rounded-2xl whitespace-pre-wrap break-words shadow 
@@ -53,6 +54,7 @@ function appendMessage(msg, isSelf = false, sender = "") {
   chatBox.appendChild(wrapper);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
+
 
 
 
@@ -197,4 +199,13 @@ function formatTimestamp(isoString) {
   const displayHours = hours % 12 || 12;
   const displayMinutes = minutes < 10 ? `0${minutes}` : minutes;
   return `${displayHours}:${displayMinutes} ${ampm}`;
+}
+
+function stringToColor(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = hash % 360;
+  return `hsl(${hue}, 70%, 50%)`; // Vivid color
 }
