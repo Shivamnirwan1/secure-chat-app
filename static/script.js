@@ -27,17 +27,33 @@ function startChat() {
 
 }
 
-function appendMessage(msg, isSelf = false) {
+function appendMessage(msg, isSelf = false, sender = "") {
+  const wrapper = document.createElement("div");
+  wrapper.className = `flex items-start gap-2 ${isSelf ? "justify-end" : "justify-start"} animate-fadeIn`;
+
+  if (!isSelf) {
+    // Create initials badge
+    const avatar = document.createElement("div");
+    avatar.className = "bg-blue-600 text-white font-bold rounded-full h-8 w-8 flex items-center justify-center shadow";
+    avatar.textContent = sender[0]?.toUpperCase() || "?";
+    wrapper.appendChild(avatar);
+  } else {
+    wrapper.classList.add("ml-auto");
+  }
+
+  // Create message bubble
   const bubble = document.createElement("div");
   bubble.className = `
-    max-w-[75%] px-4 py-2 rounded-2xl shadow 
-    ${isSelf ? "bg-blue-500 text-white self-end ml-auto" : "bg-gray-700 text-white"}
-    animate-fadeIn
+    max-w-[70%] px-4 py-2 rounded-2xl whitespace-pre-wrap break-words shadow 
+    ${isSelf ? "bg-blue-600 text-white" : "bg-gray-700 text-white"}
   `;
   bubble.textContent = msg;
-  chatBox.appendChild(bubble);
+
+  wrapper.appendChild(bubble);
+  chatBox.appendChild(wrapper);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
+
 
 
 async function generateRSAKeys() {
@@ -96,7 +112,7 @@ socket.on("receive_message", async (data) => {
     const decoder = new TextDecoder();
     const payload = JSON.parse(decoder.decode(decrypted));
     const timeStr = formatTimestamp(payload.time);
-    appendMessage(`[${payload.user} • ${timeStr}] ${payload.text}`);
+    appendMessage(`${payload.text}\n• ${timeStr}`, false, payload.user);
   } catch (err) {
     appendMessage("[!] Message decryption failed.");
   }
@@ -123,7 +139,8 @@ async function sendMessage() {
   const msg = base64Encode(iv) + ":" + base64Encode(ciphertext);
   socket.emit("encrypted_message", msg);
   const timeStr = formatTimestamp(timestamp);
-  appendMessage(`[You • ${timeStr}] ${text}`, true);
+  appendMessage(`${text}\n• ${timeStr}`, true);
+
 
 }
 
