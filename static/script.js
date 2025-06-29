@@ -29,13 +29,16 @@ function startChat() {
 
 function appendMessage(msg, isSelf = false) {
   const bubble = document.createElement("div");
-  bubble.className = `max-w-[70%] p-2 px-4 rounded-xl break-words whitespace-pre-wrap ${
-    isSelf ? "bg-blue-600 text-white self-end ml-auto" : "bg-gray-700 text-white"
-  }`;
+  bubble.className = `
+    max-w-[75%] px-4 py-2 rounded-2xl shadow 
+    ${isSelf ? "bg-blue-500 text-white self-end ml-auto" : "bg-gray-700 text-white"}
+    animate-fadeIn
+  `;
   bubble.textContent = msg;
   chatBox.appendChild(bubble);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
+
 
 async function generateRSAKeys() {
   rsaKeyPair = await window.crypto.subtle.generateKey(
