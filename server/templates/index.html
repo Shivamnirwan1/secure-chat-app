@@ -62,6 +62,19 @@
         <input id="msg" type="text" placeholder="Type your message..."
                class="flex-1 rounded-lg px-4 py-2 text-black focus:ring-2 ring-blue-400 shadow"
                oninput="onInput()" onkeydown="if(event.key==='Enter') sendMessage()" />
+               
+        <input type="file" id="fileInput" class="hidden" />
+        <label for="fileInput" class="cursor-pointer text-xl">📎</label>
+        
+        <!-- Message Input Row -->
+<div class="p-4 bg-gray-800 flex items-center gap-2 border-t border-gray-700">
+  <button id="emojiBtn" class="text-2xl hover:scale-110 transition">😊</button>
+  <label for="fileInput" class="cursor-pointer text-xl">📎</label>
+  <input id="fileInput" type="file" class="hidden" />
+  <input id="msg" ... />
+  <button onclick="sendMessage()">Send</button>
+</div>
+
         <button onclick="sendMessage()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow">
           Send
         </button>

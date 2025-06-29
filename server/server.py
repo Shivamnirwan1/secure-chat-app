@@ -65,6 +65,12 @@ def disconnect_user():
             break
     client_rsa_ciphers.pop(sid, None)
 
+@socketio.on("file_upload")
+def handle_file_upload(data):
+    room = data["room"]
+    emit("file_download", data, room=room, include_self=False)
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, host="0.0.0.0", port=port)

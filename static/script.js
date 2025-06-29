@@ -71,6 +71,25 @@ socket.on("receive_message", async (data) => {
   }
 });
 
+socket.on("file_download", async ({ file }) => {
+  if (!aesKey) return;
+
+  const iv = base64ToArrayBuffer(file.iv);
+  const content = base64ToArrayBuffer(file.content);
+
+  try {
+    const decrypted = await window.crypto.subtle.decrypt(
+      { name: "AES-GCM", iv },
+      aesKey,
+      content
+    );
+
+    appendFileMessage({ ...file, decrypted }, false);
+  } catch (e) {
+    appendMessage("[!] Failed to decrypt file.");
+  }
+});
+
 
 async function sendMessage() {
   const text = input.value.trim();
@@ -84,6 +103,39 @@ async function sendMessage() {
   socket.emit("encrypted_message", { msg: base64Encode(iv) + ":" + base64Encode(ciphertext), room });
   appendMessage(`${text}\n• ${formatTimestamp(timestamp)}`, true, username);
 }
+
+document.getElementById("fileInput").addEventListener("change", async function () {
+  const file = this.files[0];
+  if (!file || !aesKey) return;
+
+  const reader = new FileReader();
+  reader.onload = async function () {
+    const arrayBuffer = reader.result;
+
+    // Encrypt file
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const encrypted = await window.crypto.subtle.encrypt(
+      { name: "AES-GCM", iv },
+      aesKey,
+      arrayBuffer
+    );
+
+    const payload = {
+      name: file.name,
+      type: file.type,
+      iv: base64Encode(iv),
+      content: base64Encode(encrypted),
+      sender: username,
+      time: new Date().toISOString(),
+    };
+
+    socket.emit("file_upload", { room, file: payload });
+
+    appendFileMessage(payload, true);
+  };
+  reader.readAsArrayBuffer(file);
+});
+
 
 function appendMessage(msg, isSelf = false, sender = "") {
   const wrapper = document.createElement("div");
@@ -105,6 +157,45 @@ function appendMessage(msg, isSelf = false, sender = "") {
   chatBox.appendChild(wrapper);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
+
+function appendFileMessage(file, isSelf = false) {
+  const wrapper = document.createElement("div");
+  wrapper.className = `flex items-start gap-2 ${isSelf ? "justify-end" : "justify-start"} animate-fadeIn`;
+
+  if (!isSelf) {
+    const avatar = document.createElement("div");
+    avatar.className = "text-white font-bold rounded-full h-8 w-8 flex items-center justify-center shadow shrink-0";
+    avatar.style.backgroundColor = stringToColor(file.sender);
+    avatar.textContent = file.sender[0]?.toUpperCase() || "?";
+    wrapper.appendChild(avatar);
+  }
+
+  const bubble = document.createElement("div");
+  bubble.className = `max-w-[70%] px-4 py-2 rounded-2xl break-words shadow bg-gray-700 text-white`;
+
+  const timeStr = formatTimestamp(file.time);
+
+  if (file.type.startsWith("image/")) {
+    const blob = new Blob([file.decrypted], { type: file.type });
+    const url = URL.createObjectURL(blob);
+    bubble.innerHTML = `
+      <img src="${url}" class="max-w-xs rounded mb-1" />
+      <div class="text-xs text-gray-300">📎 ${file.name}<br>• ${timeStr}</div>
+    `;
+  } else {
+    const blob = new Blob([file.decrypted], { type: file.type });
+    const url = URL.createObjectURL(blob);
+    bubble.innerHTML = `
+      <a href="${url}" download="${file.name}" class="underline text-blue-300">📄 ${file.name}</a>
+      <div class="text-xs text-gray-300">• ${timeStr}</div>
+    `;
+  }
+
+  wrapper.appendChild(bubble);
+  chatBox.appendChild(wrapper);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
 
 socket.on("update_users", (users) => {
   const list = document.getElementById("userList");
