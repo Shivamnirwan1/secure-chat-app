@@ -143,7 +143,6 @@ function stringToColor(str) {
   return `hsl(${hue}, 70%, 50%)`;
 }
 
-// 🌙 Dark/Light Theme Toggle (Working)
 const themeToggle = document.getElementById("themeToggle");
 const appBody = document.body;
 const chatArea = document.getElementById("chat");
@@ -153,27 +152,29 @@ themeToggle?.addEventListener("click", () => {
   const isDark = appBody.classList.contains("bg-gray-900");
 
   if (isDark) {
+    // Switch to Light Mode (custom color)
     appBody.classList.remove("bg-gray-900", "text-white");
-    appBody.classList.add("bg-white", "text-black");
+    appBody.classList.add("text-black");
+    appBody.style.backgroundColor = "#FFFDF6";
 
     chatArea.classList.remove("bg-gray-950");
-    chatArea.classList.add("bg-gray-100");
+    chatArea.style.backgroundColor = "#ffffff";
 
     chatScreen.querySelectorAll(".bg-gray-800").forEach(el => {
       el.classList.remove("bg-gray-800");
-      el.classList.add("bg-gray-200");
+      el.style.backgroundColor = "#f0f0f0"; // Light gray UI blocks
     });
   } else {
+    // Switch back to Dark Mode
     appBody.classList.add("bg-gray-900", "text-white");
-    appBody.classList.remove("bg-white", "text-black");
+    appBody.classList.remove("text-black");
+    appBody.style.backgroundColor = "";
 
     chatArea.classList.add("bg-gray-950");
-    chatArea.classList.remove("bg-gray-100");
+    chatArea.style.backgroundColor = "";
 
-    chatScreen.querySelectorAll(".bg-gray-200").forEach(el => {
-      el.classList.remove("bg-gray-200");
-      el.classList.add("bg-gray-800");
+    chatScreen.querySelectorAll("[style]").forEach(el => {
+      el.style.backgroundColor = "";
     });
   }
 });
-
