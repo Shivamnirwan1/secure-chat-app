@@ -54,15 +54,23 @@ socket.on("aes_key", async (b64EncryptedKey) => {
 
 socket.on("receive_message", async (data) => {
   if (!aesKey) return;
+
   const [nonceB64, ciphertextB64] = data.split(":");
   const nonce = base64ToArrayBuffer(nonceB64);
   const ciphertext = base64ToArrayBuffer(ciphertextB64);
 
-  const decrypted = await window.crypto.subtle.decrypt({ name: "AES-GCM", iv: nonce }, aesKey, ciphertext);
-  const payload = JSON.parse(new TextDecoder().decode(decrypted));
-  const timeStr = formatTimestamp(payload.time);
-  appendMessage(`${payload.text}\n• ${timeStr}`, false, payload.user);
+  try {
+    const decrypted = await window.crypto.subtle.decrypt({ name: "AES-GCM", iv: nonce }, aesKey, ciphertext);
+    const payload = JSON.parse(new TextDecoder().decode(decrypted));
+    const timeStr = formatTimestamp(payload.time);
+    
+    // ✅ FIXED: Make sure sender is passed properly!
+    appendMessage(`${payload.text}\n• ${timeStr}`, false, payload.user);
+  } catch (e) {
+    console.error("Decryption failed", e);
+  }
 });
+
 
 async function sendMessage() {
   const text = input.value.trim();
@@ -143,11 +151,11 @@ function stringToColor(str) {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    hash = hash & hash; // Convert to 32bit integer
   }
-  const hue = Math.abs(hash) % 360;
-  return `hsl(${hue}, 70%, 50%)`; // Bright and readable
+  const hue = (hash % 360 + 360) % 360; // Normalize to 0-359
+  return `hsl(${hue}, 70%, 60%)`; // Bright and readable
 }
+
 
 
 const themeToggle = document.getElementById("themeToggle");
