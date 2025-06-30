@@ -24,7 +24,10 @@
  <!-- Login Screen -->
 <div id="loginScreen"
   class="flex items-center justify-center h-screen p-4"
-  style="background: linear-gradient(135deg, rgba(28,28,36,0.9), rgba(10,10,20,0.95)), url('https://www.transparenttextures.com/patterns/stardust.png'); background-size: cover;">
+  style="background: #000428;  /* fallback for old browsers */
+background: -webkit-linear-gradient(to right, #004e92, #000428);  /* Chrome 10-25, Safari 5.1-6 */
+background: linear-gradient(to right, #004e92, #000428); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
+">
 
   <!-- Glass Panel -->
   <div class="bg-white/10 backdrop-blur-lg rounded-xl shadow-lg p-8 w-full max-w-sm border border-white/20">
