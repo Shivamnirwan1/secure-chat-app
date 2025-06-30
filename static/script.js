@@ -8,6 +8,12 @@ let room = "";
 const chatBox = document.getElementById("chat");
 const input = document.getElementById("msg");
 const typingIndicator = document.getElementById("typingIndicator");
+const themeToggle = document.getElementById("themeToggle");
+const themeIcon = document.getElementById("themeIcon");
+const appBody = document.body;
+const chatArea = document.getElementById("chat");
+const chatScreen = document.getElementById("chatScreen");
+
 let typingTimeout = null;
 
 function startChat() {
@@ -54,7 +60,6 @@ socket.on("aes_key", async (b64EncryptedKey) => {
 
 socket.on("receive_message", async (data) => {
   if (!aesKey) return;
-
   const [nonceB64, ciphertextB64] = data.split(":");
   const nonce = base64ToArrayBuffer(nonceB64);
   const ciphertext = base64ToArrayBuffer(ciphertextB64);
@@ -63,33 +68,11 @@ socket.on("receive_message", async (data) => {
     const decrypted = await window.crypto.subtle.decrypt({ name: "AES-GCM", iv: nonce }, aesKey, ciphertext);
     const payload = JSON.parse(new TextDecoder().decode(decrypted));
     const timeStr = formatTimestamp(payload.time);
-    
-    // ✅ FIXED: Make sure sender is passed properly!
     appendMessage(`${payload.text}\n• ${timeStr}`, false, payload.user);
   } catch (e) {
-    console.error("Decryption failed", e);
+    appendMessage("[!] Failed to decrypt message.");
   }
 });
-
-socket.on("file_download", async ({ file }) => {
-  if (!aesKey) return;
-
-  const iv = base64ToArrayBuffer(file.iv);
-  const content = base64ToArrayBuffer(file.content);
-
-  try {
-    const decrypted = await window.crypto.subtle.decrypt(
-      { name: "AES-GCM", iv },
-      aesKey,
-      content
-    );
-
-    appendFileMessage({ ...file, decrypted }, false);
-  } catch (e) {
-    appendMessage("[!] Failed to decrypt file.");
-  }
-});
-
 
 async function sendMessage() {
   const text = input.value.trim();
@@ -99,43 +82,10 @@ async function sendMessage() {
   const payload = JSON.stringify({ user: username, text, time: timestamp });
   const iv = window.crypto.getRandomValues(new Uint8Array(12));
   const encoded = new TextEncoder().encode(payload);
-  const ciphertext = await window.crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, aesKey, encoded);
+  const ciphertext = await window.crypto.subtle.encrypt({ name: "AES-GCM", iv }, aesKey, encoded);
   socket.emit("encrypted_message", { msg: base64Encode(iv) + ":" + base64Encode(ciphertext), room });
   appendMessage(`${text}\n• ${formatTimestamp(timestamp)}`, true, username);
 }
-
-document.getElementById("fileInput").addEventListener("change", async function () {
-  const file = this.files[0];
-  if (!file || !aesKey) return;
-
-  const reader = new FileReader();
-  reader.onload = async function () {
-    const arrayBuffer = reader.result;
-
-    // Encrypt file
-    const iv = window.crypto.getRandomValues(new Uint8Array(12));
-    const encrypted = await window.crypto.subtle.encrypt(
-      { name: "AES-GCM", iv },
-      aesKey,
-      arrayBuffer
-    );
-
-    const payload = {
-      name: file.name,
-      type: file.type,
-      iv: base64Encode(iv),
-      content: base64Encode(encrypted),
-      sender: username,
-      time: new Date().toISOString(),
-    };
-
-    socket.emit("file_upload", { room, file: payload });
-
-    appendFileMessage(payload, true);
-  };
-  reader.readAsArrayBuffer(file);
-});
-
 
 function appendMessage(msg, isSelf = false, sender = "") {
   const wrapper = document.createElement("div");
@@ -157,45 +107,6 @@ function appendMessage(msg, isSelf = false, sender = "") {
   chatBox.appendChild(wrapper);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
-
-function appendFileMessage(file, isSelf = false) {
-  const wrapper = document.createElement("div");
-  wrapper.className = `flex items-start gap-2 ${isSelf ? "justify-end" : "justify-start"} animate-fadeIn`;
-
-  if (!isSelf) {
-    const avatar = document.createElement("div");
-    avatar.className = "text-white font-bold rounded-full h-8 w-8 flex items-center justify-center shadow shrink-0";
-    avatar.style.backgroundColor = stringToColor(file.sender);
-    avatar.textContent = file.sender[0]?.toUpperCase() || "?";
-    wrapper.appendChild(avatar);
-  }
-
-  const bubble = document.createElement("div");
-  bubble.className = `max-w-[70%] px-4 py-2 rounded-2xl break-words shadow bg-gray-700 text-white`;
-
-  const timeStr = formatTimestamp(file.time);
-
-  if (file.type.startsWith("image/")) {
-    const blob = new Blob([file.decrypted], { type: file.type });
-    const url = URL.createObjectURL(blob);
-    bubble.innerHTML = `
-      <img src="${url}" class="max-w-xs rounded mb-1" />
-      <div class="text-xs text-gray-300">📎 ${file.name}<br>• ${timeStr}</div>
-    `;
-  } else {
-    const blob = new Blob([file.decrypted], { type: file.type });
-    const url = URL.createObjectURL(blob);
-    bubble.innerHTML = `
-      <a href="${url}" download="${file.name}" class="underline text-blue-300">📄 ${file.name}</a>
-      <div class="text-xs text-gray-300">• ${timeStr}</div>
-    `;
-  }
-
-  wrapper.appendChild(bubble);
-  chatBox.appendChild(wrapper);
-  chatBox.scrollTop = chatBox.scrollHeight;
-}
-
 
 socket.on("update_users", (users) => {
   const list = document.getElementById("userList");
@@ -219,9 +130,12 @@ function onInput() {
   socket.emit("typing", { room, username });
 }
 
+// === Helper Functions ===
+
 function arrayBufferToBase64(buffer) {
   return btoa(String.fromCharCode(...new Uint8Array(buffer)));
 }
+
 function base64ToArrayBuffer(b64) {
   const binary = atob(b64);
   const buffer = new Uint8Array(binary.length);
@@ -243,22 +157,16 @@ function stringToColor(str) {
   for (let i = 0; i < str.length; i++) {
     hash = str.charCodeAt(i) + ((hash << 5) - hash);
   }
-  const hue = (hash % 360 + 360) % 360; // Normalize to 0-359
-  return `hsl(${hue}, 70%, 60%)`; // Bright and readable
+  const hue = (hash % 360 + 360) % 360;
+  return `hsl(${hue}, 70%, 60%)`;
 }
 
-
-
-const themeToggle = document.getElementById("themeToggle");
-const appBody = document.body;
-const chatArea = document.getElementById("chat");
-const chatScreen = document.getElementById("chatScreen");
+// === Theme Toggle + Icon Switching ===
 
 themeToggle?.addEventListener("click", () => {
   const isDark = appBody.classList.contains("bg-gray-900");
 
   if (isDark) {
-    // Switch to Light Mode (custom color)
     appBody.classList.remove("bg-gray-900", "text-white");
     appBody.classList.add("text-black");
     appBody.style.backgroundColor = "#FFFDF6";
@@ -268,10 +176,21 @@ themeToggle?.addEventListener("click", () => {
 
     chatScreen.querySelectorAll(".bg-gray-800").forEach(el => {
       el.classList.remove("bg-gray-800");
-      el.style.backgroundColor = "#f0f0f0"; // Light gray UI blocks
+      el.style.backgroundColor = "#f0f0f0";
     });
+
+    // Light icon (Sun)
+    themeIcon.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+        stroke-width="1.5" stroke="currentColor" class="size-5">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 
+          6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 
+          1.591M5.25 12H3m4.227-4.773L5.636 
+          5.636M15.75 12a3.75 3.75 0 1 1-7.5 
+          0 3.75 3.75 0 0 1 7.5 0Z" />
+      </svg>`;
   } else {
-    // Switch back to Dark Mode
     appBody.classList.add("bg-gray-900", "text-white");
     appBody.classList.remove("text-black");
     appBody.style.backgroundColor = "";
@@ -282,5 +201,18 @@ themeToggle?.addEventListener("click", () => {
     chatScreen.querySelectorAll("[style]").forEach(el => {
       el.style.backgroundColor = "";
     });
+
+    // Dark icon (Moon)
+    themeIcon.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+        stroke-width="1.5" stroke="currentColor" class="size-5">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M21.752 15.002A9.72 9.72 0 0 1 18 
+          15.75c-5.385 0-9.75-4.365-9.75-9.75 
+          0-1.33.266-2.597.748-3.752A9.753 
+          9.753 0 0 0 3 11.25C3 16.635 
+          7.365 21 12.75 21a9.753 9.753 0 
+          0 0 9.002-5.998Z" />
+      </svg>`;
   }
 });
