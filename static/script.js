@@ -216,3 +216,29 @@ themeToggle?.addEventListener("click", () => {
       </svg>`;
   }
 });
+
+
+document.addEventListener("DOMContentLoaded", () => {
+  const emojiBtn = document.getElementById("emojiBtn");
+  const emojiPicker = document.getElementById("emojiPicker");
+  const input = document.getElementById("msg");
+
+  // Toggle picker visibility
+  emojiBtn.addEventListener("click", () => {
+    emojiPicker.style.display = emojiPicker.style.display === "none" ? "block" : "none";
+  });
+
+  // Insert emoji into input
+  emojiPicker.addEventListener("emoji-click", (event) => {
+    input.value += event.detail.unicode;
+    input.focus();
+  });
+
+  // Optional: hide picker when clicking outside
+  document.addEventListener("click", (e) => {
+    if (!emojiPicker.contains(e.target) && !emojiBtn.contains(e.target)) {
+      emojiPicker.style.display = "none";
+    }
+  });
+});
+
