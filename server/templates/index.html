@@ -55,10 +55,10 @@
               opacity: 0.1;"></div>
 
     <!-- Theme Toggle -->
-    <button id="themeToggle"
-      class="absolute top-4 right-4 p-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 z-10 hover:scale-110 transition">
-      <span id="themeIcon">🌙</span>
+    <button class="theme-toggle absolute top-4 right-4 p-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 z-10 hover:scale-110 transition">
+    <span class="theme-icon">🌙</span>
     </button>
+
 
     <!-- Glass Panel -->
     <div
@@ -142,17 +142,18 @@
         class="p-4 bg-gray-800 text-center text-xl font-bold tracking-wide border-b border-gray-700 flex justify-between items-center">
         🔐 Secure Chat
 
-        <button id="themeToggle" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-white">
-          <span id="themeIcon">
-            <!-- Default: Dark theme icon -->
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-              stroke="currentColor" class="w-6 h-6">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75
-                  0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635
-                  7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
-            </svg>
-          </span>
-        </button>
+        <button class="theme-toggle bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-white">
+  <span class="theme-icon">
+    <!-- Default: Dark theme icon -->
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+      stroke="currentColor" class="w-6 h-6">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75
+        0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635
+        7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
+    </svg>
+  </span>
+</button>
+
 
       </div>
 
@@ -207,73 +208,7 @@
   </div>
 
 
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const body = document.body;
-      const loginScreen = document.getElementById("loginScreen");
-      const themeToggle = document.getElementById("themeToggle");
-      const themeIcon = document.getElementById("themeIcon");
-      const card = loginScreen.querySelector(".rounded-xl.shadow-lg");
-      const inputs = loginScreen.querySelectorAll("input");
-      const btn = loginScreen.querySelector("button[type='submit'], button[onclick='startChat()']");
-
-      // Set dark theme by default
-      let isDark = true;
-      applyTheme();
-
-      themeToggle.addEventListener("click", () => {
-        isDark = !isDark;
-        applyTheme();
-      });
-
-      function applyTheme() {
-        if (isDark) {
-          body.classList.add("text-white", "bg-gray-900");
-          body.classList.remove("text-black", "bg-white");
-          loginScreen.style.background = "linear-gradient(to right, #004e92, #000428)";
-          if (card) {
-            card.classList.remove("bg-white", "text-black", "border-gray-300");
-            card.classList.add("bg-white/10", "text-white", "border-white/20");
-          }
-          inputs.forEach(i => {
-            i.classList.remove("text-black");
-            i.classList.add("text-white");
-            i.style.backgroundColor = "#1f2937";
-          });
-          if (btn) {
-            btn.classList.remove("bg-blue-500", "hover:bg-blue-600");
-            btn.classList.add("bg-blue-600", "hover:bg-blue-700");
-          }
-          themeIcon.innerHTML = `☀️`;
-        } else {
-          body.classList.add("text-black", "bg-white");
-          body.classList.remove("text-white", "bg-gray-900");
-          loginScreen.style.background = "#E0EAFC";
-          loginScreen.style.background = "-webkit-linear-gradient(to right, #CFDEF3, #E0EAFC)";
-          loginScreen.style.background = "linear-gradient(to right, #CFDEF3, #E0EAFC)";
-          if (card) {
-            card.classList.remove("bg-white/10", "text-white", "border-white/20");
-            card.classList.add("bg-white", "text-black", "border-gray-300");
-          }
-          inputs.forEach(i => {
-            i.classList.remove("text-white");
-            i.classList.add("text-black");
-            i.style.backgroundColor = "#f9fafb";
-          });
-          if (btn) {
-            btn.classList.remove("bg-blue-600", "hover:bg-blue-700");
-            btn.classList.add("bg-blue-500", "hover:bg-blue-600");
-          }
-          themeIcon.innerHTML = `🌙`;
-        }
-      }
-
-      window.togglePassword = function () {
-        const input = document.getElementById("roomPassword");
-        input.type = input.type === "password" ? "text" : "password";
-      };
-    });
-  </script>
+  
 
 </body>
 

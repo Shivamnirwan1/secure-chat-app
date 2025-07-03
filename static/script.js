@@ -199,39 +199,57 @@ function stringToColor(str) {
 
 // === Theme Toggle + Emoji Picker ===
 
-themeToggle?.addEventListener("click", () => {
-  const isDark = appBody.classList.contains("bg-gray-900");
+// === Universal Theme Toggle ===
 
+document.addEventListener("DOMContentLoaded", () => {
+  const appBody = document.body;
+  const chatArea = document.getElementById("chat");
+  const chatScreen = document.getElementById("chatScreen");
+  const loginScreen = document.getElementById("loginScreen");
+  const themeButtons = document.querySelectorAll(".theme-toggle");
+  const themeIcons = document.querySelectorAll(".theme-icon");
+
+  let isDark = true;
+
+  applyTheme(); // Initial theme setup
+
+  themeButtons.forEach((btn) =>
+    btn.addEventListener("click", () => {
+      isDark = !isDark;
+      applyTheme();
+    })
+  );
+
+  function applyTheme() {
   if (isDark) {
-    appBody.classList.remove("bg-gray-900", "text-white");
-    appBody.classList.add("text-black");
-    appBody.style.backgroundColor = "#FFFDF6";
-    chatArea.classList.remove("bg-gray-950");
-    chatArea.style.backgroundColor = "#ffffff";
-    chatScreen.querySelectorAll(".bg-gray-800").forEach(el => {
-      el.classList.remove("bg-gray-800");
-      el.style.backgroundColor = "#f0f0f0";
-    });
-    themeIcon.innerHTML = /* sun icon */ `
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-        stroke-width="1.5" stroke="currentColor" class="size-5">
-        <path stroke-linecap="round" stroke-linejoin="round"
-          d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 
-          6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 
-          1.591M5.25 12H3m4.227-4.773L5.636 
-          5.636M15.75 12a3.75 3.75 0 1 1-7.5 
-          0 3.75 3.75 0 0 1 7.5 0Z" />
-      </svg>`;
-  } else {
+    // --- Dark Mode ---
     appBody.classList.add("bg-gray-900", "text-white");
     appBody.classList.remove("text-black");
     appBody.style.backgroundColor = "";
-    chatArea.classList.add("bg-gray-950");
-    chatArea.style.backgroundColor = "";
-    chatScreen.querySelectorAll("[style]").forEach(el => {
-      el.style.backgroundColor = "";
+
+    chatArea?.classList.add("bg-gray-950");
+    chatArea?.style.removeProperty("background-color");
+
+    chatScreen?.querySelectorAll("[style]").forEach(el => {
+      el.style.removeProperty("background-color");
     });
-    themeIcon.innerHTML = /* moon icon */ `
+
+    loginScreen?.style.setProperty("background", "linear-gradient(to right, #004e92, #000428)");
+
+    // 🎨 Reset icon + placeholder colors
+    loginScreen?.querySelectorAll(".text-gray-600").forEach(el => {
+      el.classList.remove("text-gray-600");
+      el.classList.add("text-gray-300");
+    });
+
+    loginScreen?.querySelectorAll("input").forEach(input => {
+      input.classList.remove("text-black");
+      input.classList.add("text-white", "placeholder-gray-300");
+      input.style.backgroundColor = "#1f2937";
+      input.style.color = "white";
+    });
+
+    themeIcons.forEach(icon => icon.innerHTML = `
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
         stroke-width="1.5" stroke="currentColor" class="size-5">
         <path stroke-linecap="round" stroke-linejoin="round"
@@ -241,9 +259,51 @@ themeToggle?.addEventListener("click", () => {
           9.753 0 0 0 3 11.25C3 16.635 
           7.365 21 12.75 21a9.753 9.753 0 
           0 0 9.002-5.998Z" />
-      </svg>`;
+      </svg>`);
+  } else {
+    // --- Light Mode ---
+    appBody.classList.remove("bg-gray-900", "text-white");
+    appBody.classList.add("text-black");
+    appBody.style.backgroundColor = "#FFFDF6";
+
+    chatArea?.classList.remove("bg-gray-950");
+    chatArea?.style.setProperty("background-color", "#ffffff");
+
+    chatScreen?.querySelectorAll(".bg-gray-800").forEach(el => {
+      el.classList.remove("bg-gray-800");
+      el.style.backgroundColor = "#f0f0f0";
+    });
+
+    loginScreen?.style.setProperty("background", "linear-gradient(to right,rgb(210, 210, 210),rgb(70, 221, 255))");
+
+    // 🎨 Update icon + placeholder colors
+    loginScreen?.querySelectorAll(".text-gray-300, .text-gray-400").forEach(el => {
+      el.classList.remove("text-gray-300", "text-gray-400");
+      el.classList.add("text-gray-600");
+    });
+
+    loginScreen?.querySelectorAll("input").forEach(input => {
+      input.classList.remove("text-white", "placeholder-gray-300");
+      input.classList.add("text-black");
+      input.style.backgroundColor = "#f9fafb";
+      input.style.color = "black";
+    });
+
+    themeIcons.forEach(icon => icon.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+        stroke-width="1.5" stroke="currentColor" class="size-5">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 
+          6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 
+          1.591M5.25 12H3m4.227-4.773L5.636 
+          5.636M15.75 12a3.75 3.75 0 1 1-7.5 
+          0 3.75 3.75 0 0 1 7.5 0Z" />
+      </svg>`);
   }
+}
+
 });
+
 
 document.addEventListener("DOMContentLoaded", () => {
   const emojiBtn = document.getElementById("emojiBtn");
