@@ -112,24 +112,37 @@ async function sendMessage() {
 
 function appendMessage(msg, isSelf = false, sender = "") {
   const wrapper = document.createElement("div");
-  wrapper.className = `flex items-start gap-2 ${isSelf ? "justify-end" : "justify-start"} animate-fadeIn`;
+  wrapper.className = `flex ${isSelf ? "justify-end" : "justify-start"} items-end gap-2 animate-fadeIn`;
 
   if (!isSelf) {
     const avatar = document.createElement("div");
-    avatar.className = "text-white font-bold rounded-full h-8 w-8 flex items-center justify-center shadow shrink-0";
-    avatar.style.backgroundColor = stringToColor(sender);
-    avatar.textContent = sender[0]?.toUpperCase() || "?";
+    avatar.className = "h-8 w-8 rounded-full bg-indigo-500 text-white font-semibold flex items-center justify-center shadow-md";
+    avatar.textContent = sender?.[0]?.toUpperCase() || "?";
     wrapper.appendChild(avatar);
   }
 
   const bubble = document.createElement("div");
-  bubble.className = `max-w-[70%] px-4 py-2 rounded-2xl whitespace-pre-wrap break-words shadow ${isSelf ? "bg-blue-600 text-white" : "bg-gray-700 text-white"}`;
-  bubble.textContent = msg;
+  bubble.className = `max-w-[70%] px-4 py-2 rounded-2xl shadow-md whitespace-pre-wrap break-words text-sm ${
+    isSelf ? "bg-blue-600 text-white" : "bg-gray-700 text-white"
+  }`;
 
+  const [text, timestamp] = msg.split("\n•");
+
+  const content = document.createElement("div");
+  content.textContent = text.trim();
+
+  const timeTag = document.createElement("div");
+  timeTag.textContent = timestamp?.trim() || "";
+  timeTag.className = "text-xs text-white/60 text-right mt-1";
+
+  bubble.appendChild(content);
+  bubble.appendChild(timeTag);
   wrapper.appendChild(bubble);
+
   chatBox.appendChild(wrapper);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
+
 
 socket.on("update_users", (users) => {
   const list = document.getElementById("userList");
