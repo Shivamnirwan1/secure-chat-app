@@ -22,9 +22,11 @@ room_users = {}        # room: {sid: username}
 client_rsa_ciphers = {}  # sid: RSA cipher
 
 # ✅ Serve the new landing page
-@app.route('/')
-def homepage():
-    return send_file(os.path.abspath('../static/landing/index.html'))
+@app.route("/")
+def landing():
+    return send_from_directory("../static/landing", "index.html")
+
+
 
 
 # ✅ Serve your existing chat UI
