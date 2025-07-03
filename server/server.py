@@ -1,11 +1,19 @@
 import os
-from flask import Flask, render_template, request
+from flask import Flask, send_from_directory, render_template, request
 from flask_socketio import SocketIO, emit, join_room
 from encryption import load_rsa_cipher
 from base64 import b64encode, b64decode
 from Crypto.Random import get_random_bytes
+from flask import Flask, send_file
 
-app = Flask(__name__, static_url_path="/static", static_folder="../static", template_folder="./templates")
+# ✅ Correct Flask initialization (just ONCE)
+app = Flask(
+    __name__,
+    static_url_path="/static",
+    static_folder="../static",     # allows serving from /static/*
+    template_folder="./templates"  # keeps using your existing chat UI
+)
+
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 aes_key = get_random_bytes(16)
@@ -13,9 +21,23 @@ room_passwords = {}
 room_users = {}        # room: {sid: username}
 client_rsa_ciphers = {}  # sid: RSA cipher
 
-@app.route("/")
-def index():
-    return render_template("index.html")
+# ✅ Serve the new landing page
+@app.route('/')
+def homepage():
+    return send_file(os.path.abspath('../static/landing/index.html'))
+
+
+# ✅ Serve your existing chat UI
+import os
+from flask import send_file
+
+@app.route("/chat")
+def chat():
+    return render_template("index.html")  # <-- from templates/index.html
+
+
+
+# ✅ SOCKET.IO EVENTS
 
 @socketio.on("join_room")
 def join(data):
@@ -70,7 +92,7 @@ def handle_file_upload(data):
     room = data["room"]
     emit("file_download", data, room=room, include_self=False)
 
-
+# ✅ RUN THE APP
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, host="0.0.0.0", port=port)

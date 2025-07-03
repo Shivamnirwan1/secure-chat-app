@@ -5,6 +5,13 @@ let rsaKeyPair = null;
 let username = "";
 let room = "";
 
+// Grab values from URL if present
+const params = new URLSearchParams(window.location.search);
+const urlName = params.get("name");
+const urlRoom = params.get("room");
+const urlPassword = params.get("password");
+
+// DOM elements
 const chatBox = document.getElementById("chat");
 const input = document.getElementById("msg");
 const typingIndicator = document.getElementById("typingIndicator");
@@ -22,23 +29,39 @@ function startChat() {
   const password = document.getElementById("roomPassword").value.trim();
 
   if (!username || !room || !password) return alert("Please fill all fields.");
-
   socket.emit("join_room", { username, room, password });
 }
 
+// 🌟 Automatically join room if URL has parameters
+if (urlName && urlRoom && urlPassword) {
+  username = urlName;
+  room = urlRoom;
+  socket.emit("join_room", {
+    username: urlName,
+    room: urlRoom,
+    password: urlPassword,
+  });
+}
+
 socket.on("room_join_success", () => {
-  document.getElementById("loginScreen").classList.add("hidden");
-  document.getElementById("chatScreen").classList.remove("hidden");
+  document.getElementById("loginScreen")?.classList.add("hidden");
+  document.getElementById("chatScreen")?.classList.remove("hidden");
   generateRSAKeys();
 });
 
 socket.on("room_join_error", () => {
-  document.getElementById("loginError").classList.remove("hidden");
+  alert("Invalid room password.");
+  window.location.href = "/"; // Send them back to homepage
 });
 
 async function generateRSAKeys() {
   rsaKeyPair = await window.crypto.subtle.generateKey(
-    { name: "RSA-OAEP", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" },
+    {
+      name: "RSA-OAEP",
+      modulusLength: 2048,
+      publicExponent: new Uint8Array([1, 0, 1]),
+      hash: "SHA-256",
+    },
     true,
     ["encrypt", "decrypt"]
   );
@@ -161,7 +184,7 @@ function stringToColor(str) {
   return `hsl(${hue}, 70%, 60%)`;
 }
 
-// === Theme Toggle + Icon Switching ===
+// === Theme Toggle + Emoji Picker ===
 
 themeToggle?.addEventListener("click", () => {
   const isDark = appBody.classList.contains("bg-gray-900");
@@ -170,17 +193,13 @@ themeToggle?.addEventListener("click", () => {
     appBody.classList.remove("bg-gray-900", "text-white");
     appBody.classList.add("text-black");
     appBody.style.backgroundColor = "#FFFDF6";
-
     chatArea.classList.remove("bg-gray-950");
     chatArea.style.backgroundColor = "#ffffff";
-
     chatScreen.querySelectorAll(".bg-gray-800").forEach(el => {
       el.classList.remove("bg-gray-800");
       el.style.backgroundColor = "#f0f0f0";
     });
-
-    // Light icon (Sun)
-    themeIcon.innerHTML = `
+    themeIcon.innerHTML = /* sun icon */ `
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
         stroke-width="1.5" stroke="currentColor" class="size-5">
         <path stroke-linecap="round" stroke-linejoin="round"
@@ -194,16 +213,12 @@ themeToggle?.addEventListener("click", () => {
     appBody.classList.add("bg-gray-900", "text-white");
     appBody.classList.remove("text-black");
     appBody.style.backgroundColor = "";
-
     chatArea.classList.add("bg-gray-950");
     chatArea.style.backgroundColor = "";
-
     chatScreen.querySelectorAll("[style]").forEach(el => {
       el.style.backgroundColor = "";
     });
-
-    // Dark icon (Moon)
-    themeIcon.innerHTML = `
+    themeIcon.innerHTML = /* moon icon */ `
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
         stroke-width="1.5" stroke="currentColor" class="size-5">
         <path stroke-linecap="round" stroke-linejoin="round"
@@ -217,28 +232,23 @@ themeToggle?.addEventListener("click", () => {
   }
 });
 
-
 document.addEventListener("DOMContentLoaded", () => {
   const emojiBtn = document.getElementById("emojiBtn");
   const emojiPicker = document.getElementById("emojiPicker");
   const input = document.getElementById("msg");
 
-  // Toggle picker visibility
-  emojiBtn.addEventListener("click", () => {
+  emojiBtn?.addEventListener("click", () => {
     emojiPicker.style.display = emojiPicker.style.display === "none" ? "block" : "none";
   });
 
-  // Insert emoji into input
-  emojiPicker.addEventListener("emoji-click", (event) => {
+  emojiPicker?.addEventListener("emoji-click", (event) => {
     input.value += event.detail.unicode;
     input.focus();
   });
 
-  // Optional: hide picker when clicking outside
   document.addEventListener("click", (e) => {
     if (!emojiPicker.contains(e.target) && !emojiBtn.contains(e.target)) {
       emojiPicker.style.display = "none";
     }
   });
 });
-
