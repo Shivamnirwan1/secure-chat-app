@@ -135,6 +135,13 @@
       <ul id="userList" class="space-y-1 text-gray-300 text-sm"></ul>
     </div>
 
+    <!-- Scroll to Bottom Button -->
+<button id="scrollToBottomBtn"
+  class="fixed bottom-20 right-6 z-20 px-3 py-2 bg-blue-600 text-white rounded-full shadow-lg hidden hover:bg-blue-700 transition">
+  ⬇️ New messages
+</button>
+
+
     <!-- Main Chat -->
     <div class="flex-1 flex flex-col">
       <!-- Header with toggle -->
@@ -162,6 +169,14 @@
 
       <!-- Chat area -->
       <div id="chat" class="flex-1 p-4 overflow-y-auto space-y-2 text-sm bg-gray-950"></div>
+
+      <!-- File Preview -->
+<div id="filePreviewContainer" class="px-4 py-2 bg-gray-900 border-t border-gray-800 hidden">
+  <div id="filePreview" class="flex items-center gap-3 text-white text-sm">
+    <!-- Preview gets injected here -->
+  </div>
+</div>
+
 
       <!-- Message Input -->
       <div class="p-4 bg-gray-900 flex items-center gap-3 border-t border-gray-800">

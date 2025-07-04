@@ -6,6 +6,13 @@ from base64 import b64encode, b64decode
 from Crypto.Random import get_random_bytes
 from flask import Flask, send_file
 
+
+room_users = {}
+room_passwords = {}
+client_rsa_ciphers = {}
+sid_to_username = {}  # 🔥 NEW: track sid to username for disconnect
+
+
 # ✅ Correct Flask initialization (just ONCE)
 app = Flask(
     __name__,
@@ -56,11 +63,18 @@ def join(data):
         room_passwords[room] = password
 
     join_room(room)
+
     if room not in room_users:
         room_users[room] = {}
+
     room_users[room][sid] = username
+    sid_to_username[sid] = username  # 🔥 Save SID for disconnect tracking
+
     emit("room_join_success")
     emit("update_users", list(room_users[room].values()), room=room)
+    emit("user_joined", username, room=room)  # ✅ NEW
+
+    
 
 @socketio.on("public_key")
 def send_aes(data):
@@ -77,17 +91,28 @@ def handle_message(data):
 
 @socketio.on("typing")
 def handle_typing(data):
-    emit("show_typing", data["username"], room=data["room"], include_self=False)
+    emit("show_typing", {
+        "name": data["username"],
+        "isTyping": data["isTyping"]
+    }, room=data["room"])
+
 
 @socketio.on("disconnect")
 def disconnect_user():
     sid = request.sid
+    username = sid_to_username.get(sid)  # 🔥
+
     for room, users in room_users.items():
         if sid in users:
             del users[sid]
             emit("update_users", list(users.values()), room=room)
+            if username:
+                emit("user_left", username, room=room)  # ✅ NEW
             break
+
     client_rsa_ciphers.pop(sid, None)
+    sid_to_username.pop(sid, None)  # ✅ Clean up sid map
+
 
 @socketio.on("file_upload")
 def handle_file_upload(data):

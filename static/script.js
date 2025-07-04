@@ -4,6 +4,10 @@ let aesKey = null;
 let rsaKeyPair = null;
 let username = "";
 let room = "";
+let typingUsers = new Set();
+let typingClearTimeout = null;
+
+
 
 // Grab values from URL if present
 const params = new URLSearchParams(window.location.search);
@@ -47,6 +51,7 @@ socket.on("room_join_success", () => {
   document.getElementById("loginScreen")?.classList.add("hidden");
   document.getElementById("chatScreen")?.classList.remove("hidden");
   generateRSAKeys();
+  appendSystemMessage(`✅ You joined the chat as ${username}`);
 });
 
 socket.on("room_join_error", () => {
@@ -91,11 +96,13 @@ socket.on("receive_message", async (data) => {
     const decrypted = await window.crypto.subtle.decrypt({ name: "AES-GCM", iv: nonce }, aesKey, ciphertext);
     const payload = JSON.parse(new TextDecoder().decode(decrypted));
     const timeStr = formatTimestamp(payload.time);
-    appendMessage(`${payload.text}\n• ${timeStr}`, false, payload.user);
+    const msg = `${payload.text || "[File Received]"}\n• ${timeStr}`;
+    appendMessage(msg, false, payload.user, payload.file);
   } catch (e) {
     appendMessage("[!] Failed to decrypt message.");
   }
 });
+
 
 socket.on("receive_file", async ({ data }) => {
   if (!aesKey) return;
@@ -118,16 +125,46 @@ socket.on("receive_file", async ({ data }) => {
 
 async function sendMessage() {
   const text = input.value.trim();
-  if (!aesKey || !text) return;
-  input.value = "";
+  const file = fileInput.files?.[0];
+
+  if (!aesKey || (!text && !file)) return;
+
   const timestamp = new Date().toISOString();
-  const payload = JSON.stringify({ user: username, text, time: timestamp });
+  let payload = { user: username, time: timestamp };
+
+  if (file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const base64File = base64Encode(arrayBuffer);
+    payload.file = {
+      name: file.name,
+      type: file.type,
+      data: base64File
+    };
+  }
+
+  if (text) {
+    payload.text = text;
+  }
+
   const iv = window.crypto.getRandomValues(new Uint8Array(12));
-  const encoded = new TextEncoder().encode(payload);
+  const encoded = new TextEncoder().encode(JSON.stringify(payload));
   const ciphertext = await window.crypto.subtle.encrypt({ name: "AES-GCM", iv }, aesKey, encoded);
   socket.emit("encrypted_message", { msg: base64Encode(iv) + ":" + base64Encode(ciphertext), room });
-  appendMessage(`${text}\n• ${formatTimestamp(timestamp)}`, true, username);
+
+  if (text) {
+    appendMessage(`${text}\n• ${formatTimestamp(timestamp)}`, true, username);
+  } else if (file) {
+    appendMessage(`[File Sent: ${file.name}]\n• ${formatTimestamp(timestamp)}`, true, username, payload.file);
+  }
+
+  // Reset input
+  input.value = "";
+  fileInput.value = "";
+  filePreviewContainer.classList.add("hidden");
+  filePreview.innerHTML = "";
 }
+
+
 
 document.getElementById("fileInput").addEventListener("change", async (e) => {
   const file = e.target.files[0];
@@ -154,7 +191,7 @@ document.getElementById("fileInput").addEventListener("change", async (e) => {
 
 
 
-function appendMessage(msg, isSelf = false, sender = "") {
+function appendMessage(msg, isSelf = false, sender = "", file = null) {
   const wrapper = document.createElement("div");
   wrapper.className = `flex ${isSelf ? "justify-end" : "justify-start"} items-start gap-2 animate-fadeIn`;
 
@@ -167,7 +204,6 @@ function appendMessage(msg, isSelf = false, sender = "") {
       .join("")
       .toUpperCase()
       .slice(0, 2);
-
     avatar.className = "h-9 w-9 rounded-full text-white font-bold flex items-center justify-center shadow-md text-sm shrink-0";
     avatar.textContent = initials;
     avatar.style.backgroundColor = stringToColor(sender || "?");
@@ -179,9 +215,7 @@ function appendMessage(msg, isSelf = false, sender = "") {
     isSelf ? "bg-blue-600 text-white" : "bg-gray-800 text-white"
   }`;
 
-  const [text, timestamp] = msg.split("\n•");
-
-  // Optional: Add sender name above bubble
+  // Sender name
   if (!isSelf && sender) {
     const name = document.createElement("div");
     name.textContent = sender;
@@ -189,19 +223,65 @@ function appendMessage(msg, isSelf = false, sender = "") {
     bubble.appendChild(name);
   }
 
-  const content = document.createElement("div");
-  content.textContent = text.trim();
-  bubble.appendChild(content);
+  // Text content
+  const [text, timestamp] = msg.split("\n•");
+  if (text?.trim()) {
+    const content = document.createElement("div");
+    content.textContent = text.trim();
+    bubble.appendChild(content);
+  }
 
+  // File preview (if exists)
+  if (file) {
+    if (file.type?.startsWith("image/")) {
+      const img = document.createElement("img");
+      img.src = `data:${file.type};base64,${file.data}`;
+      img.alt = file.name;
+      img.className = "rounded mt-2 max-w-[200px] max-h-[200px]";
+      bubble.appendChild(img);
+    } else {
+      const fileLink = document.createElement("a");
+      fileLink.href = `data:application/octet-stream;base64,${file.data}`;
+      fileLink.download = file.name;
+      fileLink.className = "block text-sm mt-2 underline";
+      fileLink.textContent = `📎 Download ${file.name}`;
+      bubble.appendChild(fileLink);
+    }
+  }
+
+  // Timestamp
   const timeTag = document.createElement("div");
   timeTag.textContent = timestamp?.trim() || "";
   timeTag.className = "text-xs text-white/60 text-right mt-1";
   bubble.appendChild(timeTag);
 
+  // Scroll logic
+  const atBottom = chatBox.scrollTop + chatBox.clientHeight >= chatBox.scrollHeight - 10;
+
   wrapper.appendChild(bubble);
   chatBox.appendChild(wrapper);
+
+  if (atBottom) {
+    chatBox.scrollTop = chatBox.scrollHeight;
+    scrollToBottomBtn.classList.add("hidden");
+  } else {
+    scrollToBottomBtn.classList.remove("hidden");
+  }
+}
+
+
+
+
+function appendSystemMessage(msg) {
+  const div = document.createElement("div");
+  div.className = "text-center text-xs text-gray-400 italic py-1 animate-fadeIn";
+  div.textContent = msg;
+  chatBox.appendChild(div);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
+
+
+
 
 function appendFile(fileData, isSelf = false) {
   const wrapper = document.createElement("div");
@@ -243,17 +323,67 @@ socket.on("update_users", (users) => {
   });
 });
 
-socket.on("show_typing", (name) => {
+socket.on("show_typing", ({ name, isTyping }) => {
   if (!name || name === username) return;
-  typingIndicator.textContent = `${name} is typing...`;
-  typingIndicator.classList.remove("hidden");
-  clearTimeout(typingTimeout);
-  typingTimeout = setTimeout(() => typingIndicator.classList.add("hidden"), 1500);
+
+  if (isTyping) {
+    typingUsers.add(name);
+  } else {
+    typingUsers.delete(name);
+  }
+
+  updateTypingIndicator();
+
+  // Clear after inactivity
+  clearTimeout(typingClearTimeout);
+  typingClearTimeout = setTimeout(() => {
+    typingUsers.clear();
+    updateTypingIndicator();
+  }, 2000);
 });
 
-function onInput() {
-  socket.emit("typing", { room, username });
+socket.on("user_joined", (name) => {
+  if (name !== username) {
+    appendSystemMessage(`🟢 ${name} joined the chat`);
+  }
+});
+
+socket.on("user_left", (name) => {
+  if (name !== username) {
+    appendSystemMessage(`🔴 ${name} left the chat`);
+  }
+});
+
+
+
+
+function updateTypingIndicator() {
+  const typingIndicator = document.getElementById("typingIndicator");
+
+  if (typingUsers.size === 0) {
+    typingIndicator.classList.add("hidden");
+  } else if (typingUsers.size === 1) {
+    const name = [...typingUsers][0];
+    typingIndicator.textContent = `${name} is typing...`;
+    typingIndicator.classList.remove("hidden");
+  } else {
+    typingIndicator.textContent = `Multiple people are typing...`;
+    typingIndicator.classList.remove("hidden");
+  }
 }
+
+
+
+function onInput() {
+  socket.emit("typing", { room, username, isTyping: true });
+
+  // Stop typing if no input after 1.5s
+  clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(() => {
+    socket.emit("typing", { room, username, isTyping: false });
+  }, 1500);
+}
+
 
 // === Helper Functions ===
 
@@ -414,3 +544,102 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
+
+const scrollToBottomBtn = document.getElementById("scrollToBottomBtn");
+
+chatBox.addEventListener("scroll", () => {
+  const atBottom = chatBox.scrollTop + chatBox.clientHeight >= chatBox.scrollHeight - 10;
+  scrollToBottomBtn.classList.toggle("hidden", atBottom);
+});
+
+scrollToBottomBtn?.addEventListener("click", () => {
+  chatBox.scrollTop = chatBox.scrollHeight;
+  scrollToBottomBtn.classList.add("hidden");
+});
+
+
+const fileInput = document.getElementById("fileInput");
+const filePreviewContainer = document.getElementById("filePreviewContainer");
+const filePreview = document.getElementById("filePreview");
+
+// Handle file selection
+fileInput.addEventListener("change", () => {
+  const file = fileInput.files?.[0];
+  if (!file) {
+    filePreviewContainer.classList.add("hidden");
+    filePreview.innerHTML = "";
+    return;
+  }
+
+  const isImage = file.type.startsWith("image/");
+  filePreview.innerHTML = ""; // Clear previous preview
+
+  if (isImage) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      filePreview.innerHTML = `
+        <img src="${e.target.result}" alt="preview" class="w-20 h-20 rounded object-cover border" />
+        <div class="flex flex-col gap-1">
+          <span class="font-medium">${file.name}</span>
+          <button id="cancelPreview" class="text-red-400 text-xs hover:underline self-start">❌ Cancel</button>
+        </div>
+      `;
+      filePreviewContainer.classList.remove("hidden");
+    };
+    reader.readAsDataURL(file);
+  } else {
+    filePreview.innerHTML = `
+      <div class="flex gap-2 items-center">
+        📄 <span>${file.name}</span>
+        <button id="cancelPreview" class="text-red-400 text-xs hover:underline">❌ Cancel</button>
+      </div>
+    `;
+    filePreviewContainer.classList.remove("hidden");
+  }
+});
+
+// Cancel preview
+document.addEventListener("click", (e) => {
+  if (e.target.id === "cancelPreview") {
+    fileInput.value = "";
+    filePreviewContainer.classList.add("hidden");
+    filePreview.innerHTML = "";
+  }
+});
+
+
+async function sendFile(file) {
+  if (!aesKey || !file) return;
+
+  const reader = new FileReader();
+  reader.onload = async () => {
+    const arrayBuffer = reader.result;
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+
+    const payload = JSON.stringify({
+      user: username,
+      name: file.name,
+      type: file.type,
+      data: arrayBufferToBase64(arrayBuffer),
+      time: new Date().toISOString(),
+      isFile: true,
+    });
+
+    const encoded = new TextEncoder().encode(payload);
+    const ciphertext = await window.crypto.subtle.encrypt({ name: "AES-GCM", iv }, aesKey, encoded);
+
+    socket.emit("encrypted_message", {
+      msg: base64Encode(iv) + ":" + base64Encode(ciphertext),
+      room,
+    });
+
+    // Also show locally
+    appendMessage(`\n• ${formatTimestamp(new Date().toISOString())}`, true, username, {
+      name: file.name,
+      type: file.type,
+      data: arrayBufferToBase64(arrayBuffer),
+    });
+  };
+
+  reader.readAsArrayBuffer(file);
+}
