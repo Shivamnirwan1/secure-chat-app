@@ -94,6 +94,11 @@ def handle_file_upload(data):
     room = data["room"]
     emit("file_download", data, room=room, include_self=False)
 
+@socketio.on("encrypted_file")
+def handle_file(data):
+    emit("receive_file", data, room=data["room"])
+
+
 # ✅ RUN THE APP
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))

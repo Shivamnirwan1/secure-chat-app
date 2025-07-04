@@ -97,6 +97,25 @@ socket.on("receive_message", async (data) => {
   }
 });
 
+socket.on("receive_file", async ({ data }) => {
+  if (!aesKey) return;
+
+  try {
+    const decrypted = await window.crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: base64ToArrayBuffer(data.iv) },
+      aesKey,
+      base64ToArrayBuffer(data.encrypted)
+    );
+
+    const blob = new Blob([decrypted], { type: data.type });
+    const url = URL.createObjectURL(blob);
+    appendFile({ ...data, url }, false);
+  } catch (e) {
+    appendMessage("[!] Failed to decrypt file.");
+  }
+});
+
+
 async function sendMessage() {
   const text = input.value.trim();
   if (!aesKey || !text) return;
@@ -110,35 +129,105 @@ async function sendMessage() {
   appendMessage(`${text}\n• ${formatTimestamp(timestamp)}`, true, username);
 }
 
+document.getElementById("fileInput").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file || !aesKey) return;
+
+  const reader = new FileReader();
+  reader.onload = async function (event) {
+    const arrayBuffer = event.target.result;
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const encrypted = await window.crypto.subtle.encrypt({ name: "AES-GCM", iv }, aesKey, arrayBuffer);
+
+    const data = {
+      name: file.name,
+      type: file.type,
+      iv: base64Encode(iv),
+      encrypted: base64Encode(encrypted),
+    };
+
+    socket.emit("encrypted_file", { data, room });
+    appendFile(data, true);
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+
+
 function appendMessage(msg, isSelf = false, sender = "") {
   const wrapper = document.createElement("div");
-  wrapper.className = `flex ${isSelf ? "justify-end" : "justify-start"} items-end gap-2 animate-fadeIn`;
+  wrapper.className = `flex ${isSelf ? "justify-end" : "justify-start"} items-start gap-2 animate-fadeIn`;
 
+  // Avatar for received messages
   if (!isSelf) {
     const avatar = document.createElement("div");
-    avatar.className = "h-8 w-8 rounded-full bg-indigo-500 text-white font-semibold flex items-center justify-center shadow-md";
-    avatar.textContent = sender?.[0]?.toUpperCase() || "?";
+    const initials = (sender || "?")
+      .split(" ")
+      .map(word => word[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+
+    avatar.className = "h-9 w-9 rounded-full text-white font-bold flex items-center justify-center shadow-md text-sm shrink-0";
+    avatar.textContent = initials;
+    avatar.style.backgroundColor = stringToColor(sender || "?");
     wrapper.appendChild(avatar);
   }
 
   const bubble = document.createElement("div");
   bubble.className = `max-w-[70%] px-4 py-2 rounded-2xl shadow-md whitespace-pre-wrap break-words text-sm ${
-    isSelf ? "bg-blue-600 text-white" : "bg-gray-700 text-white"
+    isSelf ? "bg-blue-600 text-white" : "bg-gray-800 text-white"
   }`;
 
   const [text, timestamp] = msg.split("\n•");
 
+  // Optional: Add sender name above bubble
+  if (!isSelf && sender) {
+    const name = document.createElement("div");
+    name.textContent = sender;
+    name.className = "text-xs font-semibold mb-1 text-white/70";
+    bubble.appendChild(name);
+  }
+
   const content = document.createElement("div");
   content.textContent = text.trim();
+  bubble.appendChild(content);
 
   const timeTag = document.createElement("div");
   timeTag.textContent = timestamp?.trim() || "";
   timeTag.className = "text-xs text-white/60 text-right mt-1";
-
-  bubble.appendChild(content);
   bubble.appendChild(timeTag);
-  wrapper.appendChild(bubble);
 
+  wrapper.appendChild(bubble);
+  chatBox.appendChild(wrapper);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function appendFile(fileData, isSelf = false) {
+  const wrapper = document.createElement("div");
+  wrapper.className = `flex ${isSelf ? "justify-end" : "justify-start"} items-end gap-2 animate-fadeIn`;
+
+  const bubble = document.createElement("div");
+  bubble.className = `max-w-[70%] px-4 py-3 rounded-2xl shadow-md whitespace-pre-wrap break-words text-sm ${
+    isSelf ? "bg-blue-600 text-white" : "bg-gray-700 text-white"
+  }`;
+
+  if (fileData.type.startsWith("image/")) {
+    const img = document.createElement("img");
+    img.src = fileData.url || "#";
+    img.alt = fileData.name;
+    img.className = "rounded-lg max-w-xs";
+    bubble.appendChild(img);
+  } else {
+    const link = document.createElement("a");
+    link.href = fileData.url || "#";
+    link.download = fileData.name;
+    link.textContent = `📎 ${fileData.name}`;
+    link.className = "underline";
+    bubble.appendChild(link);
+  }
+
+  wrapper.appendChild(bubble);
   chatBox.appendChild(wrapper);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
@@ -221,35 +310,35 @@ document.addEventListener("DOMContentLoaded", () => {
   );
 
   function applyTheme() {
-  if (isDark) {
-    // --- Dark Mode ---
-    appBody.classList.add("bg-gray-900", "text-white");
-    appBody.classList.remove("text-black");
-    appBody.style.backgroundColor = "";
+    if (isDark) {
+      // --- Dark Mode ---
+      appBody.classList.add("bg-gray-900", "text-white");
+      appBody.classList.remove("text-black");
+      appBody.style.backgroundColor = "";
 
-    chatArea?.classList.add("bg-gray-950");
-    chatArea?.style.removeProperty("background-color");
+      chatArea?.classList.add("bg-gray-950");
+      chatArea?.style.removeProperty("background-color");
 
-    chatScreen?.querySelectorAll("[style]").forEach(el => {
-      el.style.removeProperty("background-color");
-    });
+      chatScreen?.querySelectorAll("[style]").forEach(el => {
+        el.style.removeProperty("background-color");
+      });
 
-    loginScreen?.style.setProperty("background", "linear-gradient(to right, #004e92, #000428)");
+      loginScreen?.style.setProperty("background", "linear-gradient(to right, #004e92, #000428)");
 
-    // 🎨 Reset icon + placeholder colors
-    loginScreen?.querySelectorAll(".text-gray-600").forEach(el => {
-      el.classList.remove("text-gray-600");
-      el.classList.add("text-gray-300");
-    });
+      // 🎨 Reset icon + placeholder colors
+      loginScreen?.querySelectorAll(".text-gray-600").forEach(el => {
+        el.classList.remove("text-gray-600");
+        el.classList.add("text-gray-300");
+      });
 
-    loginScreen?.querySelectorAll("input").forEach(input => {
-      input.classList.remove("text-black");
-      input.classList.add("text-white", "placeholder-gray-300");
-      input.style.backgroundColor = "#1f2937";
-      input.style.color = "white";
-    });
+      loginScreen?.querySelectorAll("input").forEach(input => {
+        input.classList.remove("text-black");
+        input.classList.add("text-white", "placeholder-gray-300");
+        input.style.backgroundColor = "#1f2937";
+        input.style.color = "white";
+      });
 
-    themeIcons.forEach(icon => icon.innerHTML = `
+      themeIcons.forEach(icon => icon.innerHTML = `
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
         stroke-width="1.5" stroke="currentColor" class="size-5">
         <path stroke-linecap="round" stroke-linejoin="round"
@@ -260,36 +349,36 @@ document.addEventListener("DOMContentLoaded", () => {
           7.365 21 12.75 21a9.753 9.753 0 
           0 0 9.002-5.998Z" />
       </svg>`);
-  } else {
-    // --- Light Mode ---
-    appBody.classList.remove("bg-gray-900", "text-white");
-    appBody.classList.add("text-black");
-    appBody.style.backgroundColor = "#FFFDF6";
+    } else {
+      // --- Light Mode ---
+      appBody.classList.remove("bg-gray-900", "text-white");
+      appBody.classList.add("text-black");
+      appBody.style.backgroundColor = "#FFFDF6";
 
-    chatArea?.classList.remove("bg-gray-950");
-    chatArea?.style.setProperty("background-color", "#ffffff");
+      chatArea?.classList.remove("bg-gray-950");
+      chatArea?.style.setProperty("background-color", "#ffffff");
 
-    chatScreen?.querySelectorAll(".bg-gray-800").forEach(el => {
-      el.classList.remove("bg-gray-800");
-      el.style.backgroundColor = "#f0f0f0";
-    });
+      chatScreen?.querySelectorAll(".bg-gray-800").forEach(el => {
+        el.classList.remove("bg-gray-800");
+        el.style.backgroundColor = "#f0f0f0";
+      });
 
-    loginScreen?.style.setProperty("background", "linear-gradient(to right,rgb(210, 210, 210),rgb(70, 221, 255))");
+      loginScreen?.style.setProperty("background", "linear-gradient(to right,rgb(210, 210, 210),rgb(70, 221, 255))");
 
-    // 🎨 Update icon + placeholder colors
-    loginScreen?.querySelectorAll(".text-gray-300, .text-gray-400").forEach(el => {
-      el.classList.remove("text-gray-300", "text-gray-400");
-      el.classList.add("text-gray-600");
-    });
+      // 🎨 Update icon + placeholder colors
+      loginScreen?.querySelectorAll(".text-gray-300, .text-gray-400").forEach(el => {
+        el.classList.remove("text-gray-300", "text-gray-400");
+        el.classList.add("text-gray-600");
+      });
 
-    loginScreen?.querySelectorAll("input").forEach(input => {
-      input.classList.remove("text-white", "placeholder-gray-300");
-      input.classList.add("text-black");
-      input.style.backgroundColor = "#f9fafb";
-      input.style.color = "black";
-    });
+      loginScreen?.querySelectorAll("input").forEach(input => {
+        input.classList.remove("text-white", "placeholder-gray-300");
+        input.classList.add("text-black");
+        input.style.backgroundColor = "#f9fafb";
+        input.style.color = "black";
+      });
 
-    themeIcons.forEach(icon => icon.innerHTML = `
+      themeIcons.forEach(icon => icon.innerHTML = `
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
         stroke-width="1.5" stroke="currentColor" class="size-5">
         <path stroke-linecap="round" stroke-linejoin="round"
@@ -299,8 +388,8 @@ document.addEventListener("DOMContentLoaded", () => {
           5.636M15.75 12a3.75 3.75 0 1 1-7.5 
           0 3.75 3.75 0 0 1 7.5 0Z" />
       </svg>`);
+    }
   }
-}
 
 });
 
