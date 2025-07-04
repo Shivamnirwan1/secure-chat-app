@@ -80,7 +80,7 @@ socket.on("aes_key", async (b64EncryptedKey) => {
   try {
     const decrypted = await window.crypto.subtle.decrypt({ name: "RSA-OAEP" }, rsaKeyPair.privateKey, encryptedKey);
     aesKey = await window.crypto.subtle.importKey("raw", decrypted, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
-    appendMessage("[+] AES key received and decrypted.");
+    appendSystemMessage("[+] AES key received and decrypted.");
   } catch (err) {
     appendMessage("[!] Failed to decrypt AES key: " + err);
   }
@@ -211,9 +211,12 @@ function appendMessage(msg, isSelf = false, sender = "", file = null) {
   }
 
   const bubble = document.createElement("div");
-  bubble.className = `max-w-[70%] px-4 py-2 rounded-2xl shadow-md whitespace-pre-wrap break-words text-sm ${
-    isSelf ? "bg-blue-600 text-white" : "bg-gray-800 text-white"
-  }`;
+  bubble.className = `max-w-[70%] px-4 py-2 rounded-2xl shadow-md whitespace-pre-wrap break-words text-sm ${isSelf
+      ? "bg-blue-600 text-white"
+      : "bg-gray-100 text-black dark:bg-gray-800 dark:text-white"
+    }`;
+
+
 
   // Sender name
   if (!isSelf && sender) {
@@ -274,11 +277,12 @@ function appendMessage(msg, isSelf = false, sender = "", file = null) {
 
 function appendSystemMessage(msg) {
   const div = document.createElement("div");
-  div.className = "text-center text-xs text-gray-400 italic py-1 animate-fadeIn";
+  div.className = "text-center text-xs italic py-1 animate-fadeIn text-gray-600 dark:text-gray-400";
   div.textContent = msg;
   chatBox.appendChild(div);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
+
 
 
 
@@ -288,9 +292,11 @@ function appendFile(fileData, isSelf = false) {
   wrapper.className = `flex ${isSelf ? "justify-end" : "justify-start"} items-end gap-2 animate-fadeIn`;
 
   const bubble = document.createElement("div");
-  bubble.className = `max-w-[70%] px-4 py-3 rounded-2xl shadow-md whitespace-pre-wrap break-words text-sm ${
-    isSelf ? "bg-blue-600 text-white" : "bg-gray-700 text-white"
-  }`;
+  bubble.className = `max-w-[70%] px-4 py-3 rounded-2xl shadow-md whitespace-pre-wrap break-words text-sm ${isSelf
+      ? "bg-blue-600 text-white"
+      : "bg-gray-100 text-black dark:bg-gray-700 dark:text-white"
+    }`;
+
 
   if (fileData.type.startsWith("image/")) {
     const img = document.createElement("img");
@@ -440,14 +446,29 @@ document.addEventListener("DOMContentLoaded", () => {
   );
 
   function applyTheme() {
+    const html = document.documentElement;
+
     if (isDark) {
       // --- Dark Mode ---
+      // For message input bar in dark mode
+      const msgInput = document.getElementById("msg");
+      const messageBar = document.getElementById("messageBar");
+messageBar.style.backgroundColor = "#111827"; // Tailwind gray-900
+messageBar.style.borderTopColor = "#1f2937";  // Tailwind gray-800
+
+      msgInput.style.backgroundColor = "#1f2937"; // dark gray
+      msgInput.style.color = "white";
+      msgInput.style.setProperty("--tw-placeholder-color", "#9ca3af"); // Tailwind gray-400
+      msgInput.classList.remove("text-black");
+      msgInput.classList.add("text-white");
+
+      html.classList.add("dark");
       appBody.classList.add("bg-gray-900", "text-white");
       appBody.classList.remove("text-black");
       appBody.style.backgroundColor = "";
 
+      chatArea?.classList.remove("bg-white");
       chatArea?.classList.add("bg-gray-950");
-      chatArea?.style.removeProperty("background-color");
 
       chatScreen?.querySelectorAll("[style]").forEach(el => {
         el.style.removeProperty("background-color");
@@ -455,20 +476,73 @@ document.addEventListener("DOMContentLoaded", () => {
 
       loginScreen?.style.setProperty("background", "linear-gradient(to right, #004e92, #000428)");
 
-      // 🎨 Reset icon + placeholder colors
-      loginScreen?.querySelectorAll(".text-gray-600").forEach(el => {
-        el.classList.remove("text-gray-600");
-        el.classList.add("text-gray-300");
-      });
-
-      loginScreen?.querySelectorAll("input").forEach(input => {
+      // Only update login screen inputs — not #msg
+      loginScreen?.querySelectorAll("#usernameInput, #roomInput, #roomPassword").forEach(input => {
         input.classList.remove("text-black");
         input.classList.add("text-white", "placeholder-gray-300");
         input.style.backgroundColor = "#1f2937";
         input.style.color = "white";
       });
 
+      loginScreen?.querySelectorAll(".text-gray-600").forEach(el => {
+        el.classList.remove("text-gray-600");
+        el.classList.add("text-gray-300");
+      });
+
       themeIcons.forEach(icon => icon.innerHTML = `
+      <!-- Sun icon -->
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+        stroke-width="1.5" stroke="currentColor" class="size-5">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 
+          6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 
+          1.591M5.25 12H3m4.227-4.773L5.636 
+          5.636M15.75 12a3.75 3.75 0 1 1-7.5 
+          0 3.75 3.75 0 0 1 7.5 0Z" />
+      </svg>
+    `);
+    } else {
+      // --- Light Mode ---
+      // For message input bar in light mode
+      const msgInput = document.getElementById("msg");
+      const messageBar = document.getElementById("messageBar");
+messageBar.style.backgroundColor = "#ffffff"; // Light mode background
+messageBar.style.borderTopColor = "#d1d5db";  // Tailwind gray-300
+
+      msgInput.style.backgroundColor = "#f9fafb"; // light background
+      msgInput.style.color = "black";
+      msgInput.style.setProperty("--tw-placeholder-color", "#6b7280"); // Tailwind gray-500
+      msgInput.classList.remove("text-white");
+      msgInput.classList.add("text-black");
+
+      html.classList.remove("dark");
+      appBody.classList.remove("bg-gray-900", "text-white");
+      appBody.classList.add("text-black");
+
+      chatArea?.classList.remove("bg-gray-950");
+      chatArea?.classList.add("bg-white");
+
+      chatScreen?.querySelectorAll(".bg-gray-800").forEach(el => {
+        el.classList.remove("bg-gray-800");
+        el.style.backgroundColor = "#f0f0f0";
+      });
+
+      loginScreen?.style.setProperty("background", "linear-gradient(to right, rgb(210,210,210), rgb(70,221,255))");
+
+      loginScreen?.querySelectorAll("#usernameInput, #roomInput, #roomPassword").forEach(input => {
+        input.classList.remove("text-white", "placeholder-gray-300");
+        input.classList.add("text-black");
+        input.style.backgroundColor = "#f9fafb";
+        input.style.color = "black";
+      });
+
+      loginScreen?.querySelectorAll(".text-gray-300, .text-gray-400").forEach(el => {
+        el.classList.remove("text-gray-300", "text-gray-400");
+        el.classList.add("text-gray-600");
+      });
+
+      themeIcons.forEach(icon => icon.innerHTML = `
+      <!-- Moon icon -->
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
         stroke-width="1.5" stroke="currentColor" class="size-5">
         <path stroke-linecap="round" stroke-linejoin="round"
@@ -478,49 +552,10 @@ document.addEventListener("DOMContentLoaded", () => {
           9.753 0 0 0 3 11.25C3 16.635 
           7.365 21 12.75 21a9.753 9.753 0 
           0 0 9.002-5.998Z" />
-      </svg>`);
-    } else {
-      // --- Light Mode ---
-      appBody.classList.remove("bg-gray-900", "text-white");
-      appBody.classList.add("text-black");
-      appBody.style.backgroundColor = "#FFFDF6";
-
-      chatArea?.classList.remove("bg-gray-950");
-      chatArea?.style.setProperty("background-color", "#ffffff");
-
-      chatScreen?.querySelectorAll(".bg-gray-800").forEach(el => {
-        el.classList.remove("bg-gray-800");
-        el.style.backgroundColor = "#f0f0f0";
-      });
-
-      loginScreen?.style.setProperty("background", "linear-gradient(to right,rgb(210, 210, 210),rgb(70, 221, 255))");
-
-      // 🎨 Update icon + placeholder colors
-      loginScreen?.querySelectorAll(".text-gray-300, .text-gray-400").forEach(el => {
-        el.classList.remove("text-gray-300", "text-gray-400");
-        el.classList.add("text-gray-600");
-      });
-
-      loginScreen?.querySelectorAll("input").forEach(input => {
-        input.classList.remove("text-white", "placeholder-gray-300");
-        input.classList.add("text-black");
-        input.style.backgroundColor = "#f9fafb";
-        input.style.color = "black";
-      });
-
-      themeIcons.forEach(icon => icon.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-        stroke-width="1.5" stroke="currentColor" class="size-5">
-        <path stroke-linecap="round" stroke-linejoin="round"
-          d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 
-          6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 
-          1.591M5.25 12H3m4.227-4.773L5.636 
-          5.636M15.75 12a3.75 3.75 0 1 1-7.5 
-          0 3.75 3.75 0 0 1 7.5 0Z" />
-      </svg>`);
+      </svg>
+    `);
     }
   }
-
 });
 
 
@@ -604,6 +639,14 @@ document.addEventListener("click", (e) => {
     fileInput.value = "";
     filePreviewContainer.classList.add("hidden");
     filePreview.innerHTML = "";
+  }
+});
+
+
+document.getElementById("msg")?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault(); // prevent newline
+    sendMessage();      // send message
   }
 });
 

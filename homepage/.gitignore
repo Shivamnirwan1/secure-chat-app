@@ -23,6 +23,3 @@ dist-ssr
 *.sln
 *.sw?
 
-# homepage build & dependencies
-homepage/node_modules/
-homepage/dist/
