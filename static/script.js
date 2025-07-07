@@ -210,13 +210,16 @@ function appendMessage(msg, isSelf = false, sender = "", file = null) {
     wrapper.appendChild(avatar);
   }
 
+  // === Bubble ===
   const bubble = document.createElement("div");
-  bubble.className = `max-w-[70%] px-4 py-2 rounded-2xl shadow-md whitespace-pre-wrap break-words text-sm ${isSelf
-      ? "bg-blue-600 text-white"
-      : "bg-gray-100 text-black dark:bg-gray-800 dark:text-white"
-    }`;
-
-
+  bubble.className = `
+    group relative max-w-[70%] px-4 py-2 shadow-md whitespace-pre-wrap break-words text-sm transition-all duration-300
+    ${isSelf
+      ? "bg-blue-600 text-white rounded-tl-2xl rounded-tr-2xl rounded-bl-2xl"
+      : "bg-gray-100 text-black dark:bg-gray-800 dark:text-white rounded-tr-2xl rounded-tl-2xl rounded-br-2xl"
+    }
+    hover:scale-[1.01]
+  `;
 
   // Sender name
   if (!isSelf && sender) {
@@ -258,6 +261,28 @@ function appendMessage(msg, isSelf = false, sender = "", file = null) {
   timeTag.className = "text-xs text-white/60 text-right mt-1";
   bubble.appendChild(timeTag);
 
+  // === Reaction Button (😊 icon on hover) ===
+  const reactBtn = document.createElement("button");
+  reactBtn.innerHTML = "😊";
+  reactBtn.title = "React";
+  reactBtn.className = "absolute top-1 right-1 text-xs opacity-0 group-hover:opacity-100 transition";
+  bubble.appendChild(reactBtn);
+
+  // === Reaction Display Area ===
+  const reactions = document.createElement("div");
+  reactions.className = "flex gap-1 mt-1 text-xl";
+  bubble.appendChild(reactions);
+
+  // === Reaction Click Handler ===
+  reactBtn.addEventListener("click", () => {
+    const emoji = prompt("React with an emoji (e.g., 👍 ❤️ 😂)");
+    if (emoji) {
+      const span = document.createElement("span");
+      span.textContent = emoji;
+      reactions.appendChild(span);
+    }
+  });
+
   // Scroll logic
   const atBottom = chatBox.scrollTop + chatBox.clientHeight >= chatBox.scrollHeight - 10;
 
@@ -271,6 +296,7 @@ function appendMessage(msg, isSelf = false, sender = "", file = null) {
     scrollToBottomBtn.classList.remove("hidden");
   }
 }
+
 
 
 
@@ -368,15 +394,35 @@ function updateTypingIndicator() {
 
   if (typingUsers.size === 0) {
     typingIndicator.classList.add("hidden");
-  } else if (typingUsers.size === 1) {
-    const name = [...typingUsers][0];
-    typingIndicator.textContent = `${name} is typing...`;
-    typingIndicator.classList.remove("hidden");
+    typingIndicator.innerHTML = "";
+    return;
+  }
+
+  typingIndicator.classList.remove("hidden");
+
+  // Show initials of those typing
+  const usersTyping = [...typingUsers];
+
+  if (usersTyping.length === 1) {
+    typingIndicator.innerHTML = `
+      <span class="inline-flex items-center gap-2">
+        <span class="inline-block h-6 w-6 rounded-full text-xs font-bold flex items-center justify-center text-white shadow"
+              style="background-color: ${stringToColor(usersTyping[0])}">
+          ${usersTyping[0].split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2)}
+        </span>
+        <span>${usersTyping[0]} is typing<span class="typing-dots"></span></span>
+      </span>
+    `;
   } else {
-    typingIndicator.textContent = `Multiple people are typing...`;
-    typingIndicator.classList.remove("hidden");
+    typingIndicator.innerHTML = `
+      <span class="inline-flex items-center gap-2">
+        <span>${usersTyping.length} people are typing</span>
+        <span class="typing-dots"></span>
+      </span>
+    `;
   }
 }
+
 
 
 
@@ -641,6 +687,8 @@ document.addEventListener("click", (e) => {
     filePreview.innerHTML = "";
   }
 });
+
+document.getElementById("msg").addEventListener("input", onInput);
 
 
 document.getElementById("msg")?.addEventListener("keydown", (e) => {
